@@ -1,0 +1,9 @@
+export(svy_vglm)
+
+S3method(print,svy_vglm)
+S3method(coef,svy_vglm)
+S3method(vcov, svy_vglm)
+
+S3method(svy_vglm, survey.design2)
+S3method(svy_vglm, svyrep.design)
+

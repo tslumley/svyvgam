@@ -49,7 +49,7 @@ svy_vglm.survey.design<-function(formula, family, design,...){
     pwts<-weights(design,"sampling")
     meanweight<-mean(pwts)
     surveydata$.survey.prob.weights<-pwts
-    surveydata$.survey.prob.weights[surveydata$.survey.prob.weights==0]<- 1e-8
+    surveydata$.survey.prob.weights[surveydata$.survey.prob.weights==0]<- 1e-9*max(pwts)
     
     fit<-vglm(formula, family, data=surveydata, weights=.survey.prob.weights,...)
     

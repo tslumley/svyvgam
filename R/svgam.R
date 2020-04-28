@@ -14,7 +14,7 @@ svy_vglm.svyrep.design<-function(formula,family,design,...){
     pwts<-weights(design,"sampling")
     meanweight<-mean(pwts)
     surveydata$.survey.prob.weights<-pwts/meanweight
-    surveydata$.survey.prob.weights[surveydata$.survey.prob.weights==0]<- 1e-8
+    surveydata$.survey.prob.weights[surveydata$.survey.prob.weights==0]<- 1e-9*max(pwts)
 
     
     fit0<-vglm(formula, family, data=surveydata, weights=.survey.prob.weights,...)
@@ -24,7 +24,7 @@ svy_vglm.svyrep.design<-function(formula,family,design,...){
     thetas<-matrix(0,ncol=length(theta),nrow=ncol(repwts))
     for(i in 1:ncol(repwts)){
         surveydata$.survey.prob.weights<-repwts[,i]/meanweight
-        surveydata$.survey.prob.weights[surveydata$.survey.prob.weights==0]<- 1e-8
+        surveydata$.survey.prob.weights[surveydata$.survey.prob.weights==0]<-1e-9*max(pwts)
 
         fit_i<-vglm(formula, family, data=surveydata, weights=.survey.prob.weights,...,coefstart=theta)
         thetas[i,]<-coef(fit_i)

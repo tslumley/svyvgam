@@ -5,7 +5,12 @@
 Design-based inference for vector generalised linear models
 }
 \description{
-%%  ~~ A concise (1-5 lines) description of what the function does. ~~
+This function provides design-based (survey) inference for Thomas Yee's
+vector generalised linear models.  It works by calling \code{vglm} with
+sampling weights, and then either using resampling (replicate weights)
+or extracting the influence functions and using a Horvitz-Thompson-type
+sandwich estimator.
+
 }
 \usage{
 svy_vglm(formula, family, design, ...)
@@ -25,9 +30,7 @@ Survey design object
 Other arguments to pass to  \code{\link{vglm}}
   }
 }
-\details{
-%%  ~~ If necessary, more details than the description above ~~
-}
+
 \value{
 An S3 object of class \code{svy_glm} with \code{print}, \code{coef} and \code{vcov}
 methods, containing the design in the \code{design} component and a
@@ -39,15 +42,7 @@ fitted \code{vglm} object in the \code{fit} component.
 \author{
   Thomas Lumley
 }
-\note{
-%%  ~~further notes~~
-}
 
-%% ~Make other sections like Warning with \section{Warning }{....} ~
-
-\seealso{
-%% ~~objects to See Also as \code{\link{help}}, ~~~
-}
 \examples{
 ##---- Should be DIRECTLY executable !! ----
 ##-- ==>  Define data, use random,

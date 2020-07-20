@@ -61,7 +61,7 @@ svy_vglm.survey.design<-function(formula, family, design,...){
     
     scores<-weights(fit, deriv = TRUE, type = "working")$deriv
     
-    sfit<-summary(fit)
+    sfit<-VGAM::summaryvglm(fit)
     
     inv_inf<-sfit@cov.unscaled
 

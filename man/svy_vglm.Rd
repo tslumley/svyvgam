@@ -1,5 +1,8 @@
 \name{svy_vglm}
 \alias{svy_vglm}
+\alias{svy_vglm.survey.design}
+\alias{svy_vglm.svyrep.design}
+
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Design-based inference for vector generalised linear models

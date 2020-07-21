@@ -78,7 +78,7 @@ svy_vglm.survey.design<-function(formula, family, design,...){
     dimnames(v)<-list(names(coef(fit)),names(coef(fit)))
     
     rval<-list(coef=coef(fit), fit=fit, var=v, naive.var=sfit@cov.unscaled*sfit@dispersion,
-               design=design, inff=inffuns, scores=scores,uu=((scores%*%cons)*mmatsum))
+               design=design)
     class(rval)<-"svy_vglm"
     rval
    

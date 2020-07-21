@@ -39,23 +39,53 @@ An S3 object of class \code{svy_glm} with \code{print}, \code{coef} and \code{vc
 methods, containing the design in the \code{design} component and a
 fitted \code{vglm} object in the \code{fit} component.
 }
-\references{
-%% ~put references to the literature/web site here ~
-}
-\author{
-  Thomas Lumley
+
+\seealso{
+\code{\link{nhanes_sxq}}
+
+\code{\link{vglm}}
+
+\code{\link{svydesign}}
+\code{\link{svrepdesign}}
+
+
 }
 
 \examples{
-##---- Should be DIRECTLY executable !! ----
-##-- ==>  Define data, use random,
-##--	or do  help(data=index)  for the standard data sets.
+data(api)
+dclus2<-svydesign(id=~1,strata=~stype, weights=~pw, data=apiclus2, fpc=~fpc)
 
-## The function is currently defined as
-function (formula, family, design, ...) 
-{
-    UseMethod("svy_vglm", design)
-  }
+## Ordinary Gaussian regression
+m1<-svyglm(api00~api99+mobility+ell, design=dclus2,family=gaussian)
+## same model, but with the variance as a second parameter
+m2<-svy_vglm(api00~api99+mobility+ell, design=dclus2,family=uninormal())
+m1
+m2
+SE(m1)
+SE(m2)
+
+## Proportional odds model
+dclus2<-update(dclus2, mealcat=as.ordered(cut(meals,c(0,25,50,75,100))))
+a<-svyolr(mealcat~avg.ed+mobility+stype, design=dclus2)
+b<-svy_vglm(mealcat~avg.ed+mobility+stype, design=dclus2, family=propodds())
+a
+b
+SE(a)
+SE(b) #not identical, because svyolr() uses approximate Hessian
+
+
+## Zero-inflated Poisson
+data(nhanes_sxq)
+nhdes = svydesign(id=~SDMVPSU,strat=~SDMVSTRA,weights=~WTINT2YR, nest=TRUE, data=nhanes_sxq)
+nhrepdes<-as.svrepdesign(nhdes,type="Fay",fay.rho=0.2)
+
+sv1<-svy_vglm(malepartners~RIDAGEYR+factor(RIDRETH1)+DMDEDUC, zipoisson(), design=nhdes, crit = "coef")
+svrep<-svy_vglm(malepartners~RIDAGEYR+factor(RIDRETH1)+DMDEDUC, zipoisson(), design=nhrepdes, crit = "coef")
+sv1
+svrep
+SE(sv1)
+SE(svrep)
+
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

@@ -53,7 +53,7 @@ fitted \code{vglm} object in the \code{fit} component.
 
 \examples{
 data(api)
-dclus2<-svydesign(id=~1,strata=~stype, weights=~pw, data=apiclus2, fpc=~fpc)
+dclus2<-svydesign(id=~dnum+snum, fpc=~fpc1+fpc2, data=apiclus2)
 
 ## Ordinary Gaussian regression
 m1<-svyglm(api00~api99+mobility+ell, design=dclus2,family=gaussian)

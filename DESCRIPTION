@@ -1,10 +1,10 @@
-Package: svyvgam
+Package: svyVGAM
 Title: Design-based Inference in Vector Generalised Linear Models
 Version: 0.2
 Author: Thomas Lumley
 Description: Provides inference based on the survey package for the wide range of parametric models in the VGAM package.
 Imports: stats
-Depends: VGAM, survey
+Depends: VGAM, survey, R (>=3.5.0)
 Suggests: 
 VignetteBuilder: knitr
 VignetteDepends: pscl

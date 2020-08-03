@@ -1,0 +1,127 @@
+---
+title: "Zero-inflated Poisson model for complex survey data"
+author: "Vignette Author"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+The Zero-Inflated Poisson model is a model for count data with excess zeros. The response distribution is a mixture of a point mass at zero and a Poisson distribution: if $Z$ is Bernoulli with probability $1-p_0$ and $P$ is Poisson with mean $\lambda$, then $Y=Z+(1-Z)P$ is zero-inflated Poisson. The ZIP is a latent-class model; we can have $Y=0$ either because $Z=0$ ('structural' zeroes) or because $P=0$. That’s natural in some ecological examples: if you didn’t see any moose it could be because the area is moose-free (it’s downtown Auckland) or because you just randomly didn’t see any.
+
+There isn’t existing software in R for design-based inference in zero-inflated Poisson models, so it’s a good example for showing how to add models.  The `pscl` package (Zeileis et al) fits zero-inflated models, and so does `VGAM`, so we can compare the model fitted with `svyVGAM` to both of those and to other work-arounds.
+
+I’ll do an example with data on number of sexual partners, from NHANES 2003-2004. We will look at questions SXQ200 and SXQ100: number of male sexual partners.  Combining these gives a ‘real’ zero-inflated variable: based on sexual orientation the zeroes would divide into 'never' and 'not yet'.
+
+Here's how I created the dataset, from two NHANES files.  It's `data(nhanes_sxq)` in the package
+```
+library(foreign)
+setwd("~/nhanes")
+demo = read.xport("demo_c.xpt")
+sxq = read.xport("sxq_c.xpt")
+merged = merge(demo, sxq, by='SEQN')
+merged$total = with(merged, ifelse(RIAGENDR==2, SXQ100+SXQ130, SXQ170+SXQ200))
+merged$total[merged$SXQ020==2] = 0
+merged$total[merged$total>2000] = NA
+merged$age = merged$RIDAGEYR/25
+merged$malepartners=with(merged, ifelse(RIAGENDR==2,SXQ100,SXQ200))
+merged$malepartners[merged$malepartners>200]=NA
+nhanes_sxq<-merged[, c("SDMVPSU","SDMVSTRA","WTINT2YR","RIDAGEYR","RIDRETH1","DMDEDUC","malepartners")]
+```
+
+Start off by loading the packages and setting up a survey design
+
+```{r}
+library(svyVGAM)
+library(pscl)
+data(nhanes_sxq)
+des = svydesign(id=~SDMVPSU,strat=~SDMVSTRA,weights=~WTINT2YR, nest=TRUE, data=nhanes_sxq)
+```
+
+First, we'll fit the model just ignoring the survey design, using both `pscl::zeroinfl` and `VGAM::vglm`.  These models use the same variables in a logistic regression for $Z$ and a Poisson regression for $P$.  In `VGAM` you make the models different by constraining coefficients to be zero in one of the models; in `pscl` you specify different models before and after the `|`.
+
+```{r}
+unwt = zeroinfl(malepartners~RIDAGEYR+factor(RIDRETH1)+DMDEDUC|RIDAGEYR+factor(RIDRETH1)+DMDEDUC, data=nhanes_sxq)
+summary(unwt)
+
+vglm(malepartners~RIDAGEYR+factor(RIDRETH1)+DMDEDUC, zipoisson(), data = nhanes_sxq, crit = "coef")
+```
+
+
+
+
+
+```{r}
+nhanes_sxq$scaledwt<-nhanes_sxq$WTINT2YR/mean(nhanes_sxq$WTINT2YR)
+
+wt= zeroinfl(malepartners~RIDAGEYR+factor(RIDRETH1)+DMDEDUC|RIDAGEYR+factor(RIDRETH1)+DMDEDUC, data=nhanes_sxq, weights=scaledwt)
+summary(wt)
+
+wtv= vglm(malepartners~RIDAGEYR+factor(RIDRETH1)+DMDEDUC, zipoisson(), data = nhanes_sxq, crit = "coef",weights=scaledwt)
+summary(wtv)
+```
+
+
+```{r}
+## repwts
+repdes = as.svrepdesign(des,type="Fay",fay.rho=0.2)
+rep1 = withReplicates(repdes, quote( 
+    coef(zeroinfl(malepartners~RIDAGEYR+factor(RIDRETH1)+DMDEDUC|RIDAGEYR+factor(RIDRETH1)+DMDEDUC, weights=.weights))
+    ))
+rep1
+
+repv = withReplicates(repdes, quote( 
+    coef(vglm(malepartners~RIDAGEYR+factor(RIDRETH1)+DMDEDUC, zipoisson(), data = nhanes_sxq, crit = "coef",weights=.weights))
+    ))
+repv
+```
+
+
+```{r}
+## svymle
+loglike = function(y,eta,logitp){
+    mu = exp(eta)
+    p = exp(logitp)/(1+exp(logitp))
+    log(p*(y==0)+(1-p)*dpois(y,mu))
+    }
+    
+dlogitp = function(y,eta,logitp){
+    mu = exp(eta)
+    p = exp(logitp)/(1+exp(logitp))
+    dexpit = p/(1+p)^2
+    num = dexpit*(y==0)-dexpit*dpois(y,mu)
+    denom = p*(y==0)+(1-p)*dpois(y,mu)
+    num/denom
+    }   
+    
+deta = function(y,eta,logitp){
+    mu = exp(eta)
+    p = exp(logitp)/(1+exp(logitp))
+    dmutoy = 0*y
+    dmutoy[y>0] = exp(-mu[y>0])*mu[y>0]^(y[y>0]-1)/factorial(y[y>0]-1)
+    num = (1-p)*(-dpois(y,mu)+dmutoy)
+    denom = p*(y==0)+(1-p)*dpois(y,mu)
+    num/denom
+    }   
+
+score = function(y,eta,logitp) cbind(deta(y,eta,logitp), dlogitp(y,eta,logitp))    
+
+nlmfit = svymle(loglike=loglike, grad=score, design=des, 
+        formulas=list(eta=malepartners~RIDAGEYR + factor(RIDRETH1) + DMDEDUC, 
+        logitp=~RIDAGEYR + factor(RIDRETH1) + DMDEDUC),
+      start=coef(unwt), na.action="na.omit",method="BFGS")
+
+summary(nlmfit)
+```
+
+asd
+
+```{r}
+## svy_vgam
+library(svyVGAM)
+
+svy_vglm(malepartners~RIDAGEYR+factor(RIDRETH1)+DMDEDUC, zipoisson(), design=des, crit = "coef")
+
+svy_vglm(malepartners~RIDAGEYR+factor(RIDRETH1)+DMDEDUC, zipoisson(), design=repdes, crit = "coef")
+```

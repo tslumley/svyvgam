@@ -1,18 +1,18 @@
 ---
 title: "Zero-inflated Poisson model for complex survey data"
-author: "Vignette Author"
+author: "Thomas Lumley"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteIndexEntry{Zero-inflated Poisson model for complex survey data}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
 ---
-The Zero-Inflated Poisson model is a model for count data with excess zeros. The response distribution is a mixture of a point mass at zero and a Poisson distribution: if $Z$ is Bernoulli with probability $1-p_0$ and $P$ is Poisson with mean $\lambda$, then $Y=Z+(1-Z)P$ is zero-inflated Poisson. The ZIP is a latent-class model; we can have $Y=0$ either because $Z=0$ ('structural' zeroes) or because $P=0$. That’s natural in some ecological examples: if you didn’t see any moose it could be because the area is moose-free (it’s downtown Auckland) or because you just randomly didn’t see any.
+The Zero-Inflated Poisson model is a model for count data with excess zeros. The response distribution is a mixture of a point mass at zero and a Poisson distribution: if $Z$ is Bernoulli with probability $1-p_0$ and $P$ is Poisson with mean $\lambda$, then $Y=Z+(1-Z)P$ is zero-inflated Poisson. The ZIP is a latent-class model; we can have $Y=0$ either because $Z=0$ ('structural' zeroes) or because $P=0$. That’s natural in some ecological examples: if you didn’t see any salmon it could be because the area is salmon-free (it’s Eden Park) or because you just randomly didn’t see any.  To turn this into a regression model we typically put a logistic regression structure on $Z$ and a Poisson regression structure on $P$. 
 
-There isn’t existing software in R for design-based inference in zero-inflated Poisson models, so it’s a good example for showing how to add models.  The `pscl` package (Zeileis et al) fits zero-inflated models, and so does `VGAM`, so we can compare the model fitted with `svyVGAM` to both of those and to other work-arounds.
+There isn’t (as far as I know) existing software in R for design-based inference in zero-inflated Poisson models, so it’s a good example for the benefits of `svyVGAM`.  The `pscl` package (Zeileis et al) fits zero-inflated models, and so does `VGAM`, so we can compare the model fitted with `svyVGAM` to both of those and to other work-arounds.
 
-I’ll do an example with data on number of sexual partners, from NHANES 2003-2004. We will look at questions SXQ200 and SXQ100: number of male sexual partners.  Combining these gives a ‘real’ zero-inflated variable: based on sexual orientation the zeroes would divide into 'never' and 'not yet'.
+I’ll do an example with data on number of sexual partners, from NHANES 2003-2004. We will look at questions `SXQ200` and `SXQ100`: number of male sexual partners.  Combining these gives a ‘real’ zero-inflated variable: based on sexual orientation the zeroes would divide into 'never' and 'not yet'.
 
 Here's how I created the dataset, from two NHANES files.  It's `data(nhanes_sxq)` in the package
 ```
@@ -39,7 +39,7 @@ data(nhanes_sxq)
 des = svydesign(id=~SDMVPSU,strat=~SDMVSTRA,weights=~WTINT2YR, nest=TRUE, data=nhanes_sxq)
 ```
 
-First, we'll fit the model just ignoring the survey design, using both `pscl::zeroinfl` and `VGAM::vglm`.  These models use the same variables in a logistic regression for $Z$ and a Poisson regression for $P$.  In `VGAM` you make the models different by constraining coefficients to be zero in one of the models; in `pscl` you specify different models before and after the `|`.
+First, we'll fit the model just ignoring the survey design, using both `pscl::zeroinfl` and `VGAM::vglm`.  These models use the same variables in a logistic regression for $Z$ and a Poisson regression for $P$.  In `VGAM` you would make the models different by constraining coefficients to be zero in one of the models; in `pscl` you would specify different models before and after the `|`.
 
 ```{r}
 unwt = zeroinfl(malepartners~RIDAGEYR+factor(RIDRETH1)+DMDEDUC|RIDAGEYR+factor(RIDRETH1)+DMDEDUC, data=nhanes_sxq)
@@ -49,6 +49,7 @@ vglm(malepartners~RIDAGEYR+factor(RIDRETH1)+DMDEDUC, zipoisson(), data = nhanes_
 ```
 
 
+A traditional work-around for regression models is to rescale the weights to sum to the sample size and then pretend they are precision weights or frequency weights. 
 
 
 
@@ -63,7 +64,7 @@ summary(wtv)
 ```
 
 
-```{r}
+```{r warning=FALSE}
 ## repwts
 repdes = as.svrepdesign(des,type="Fay",fay.rho=0.2)
 rep1 = withReplicates(repdes, quote( 
@@ -78,14 +79,23 @@ repv
 ```
 
 
+Another way to fit the model using just the `survey` package is with `svymle`.  This takes the log-likelihood and its derivative as arguments, and adds linear predictors to some or all of those arguments.  That is, we specify the log-likelihood in terms of the Bernoulli parameter $p_0$ and the Poisson mean $\lambda$ -- actually $\mathrm{logit} p_0$ and $\eta=\log\lambda$, and also give the derivative with respect to these two parameters. The software does the necessary additional work to put linear predictors on the parameters and give us the zero-inflated model.  In fact, `svymle` is very similar in underlying approach to `vglm`; the difference is that `vglm` comes with a large collection of predefined models. 
+
+In defining the loglikelihood I'm going to take advantage of the Poisson pmf being available in R. Let's call it $\digamma(y,\lambda)$. The loglikelihood is 
+$$\ell(y; \mu,p_0)=\log\left(p_0\{y==0\}+(1-p)\digamma(y,\mu)\right)$$
+only we want it in terms of $\mathrm{logit} p_0$ and $\eta=\log \lambda$
 ```{r}
 ## svymle
 loglike = function(y,eta,logitp){
     mu = exp(eta)
     p = exp(logitp)/(1+exp(logitp))
     log(p*(y==0)+(1-p)*dpois(y,mu))
-    }
-    
+}
+```
+   
+We also need the derivatives with respect to $\mathrm{logit} p_0$ and $\eta=\log \lambda$
+   
+```{r}    
 dlogitp = function(y,eta,logitp){
     mu = exp(eta)
     p = exp(logitp)/(1+exp(logitp))
@@ -105,8 +115,12 @@ deta = function(y,eta,logitp){
     num/denom
     }   
 
-score = function(y,eta,logitp) cbind(deta(y,eta,logitp), dlogitp(y,eta,logitp))    
+score = function(y,eta,logitp) cbind(deta(y,eta,logitp), dlogitp(y,eta,logitp))
+```
 
+Finally, we call `svymle` giving the linear predictors for both parameters.  One of the formulas needs to include the response variable $Y$. 
+
+```{r}
 nlmfit = svymle(loglike=loglike, grad=score, design=des, 
         formulas=list(eta=malepartners~RIDAGEYR + factor(RIDRETH1) + DMDEDUC, 
         logitp=~RIDAGEYR + factor(RIDRETH1) + DMDEDUC),

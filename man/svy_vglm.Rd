@@ -64,6 +64,9 @@ m2
 SE(m1)
 SE(m2)
 
+summary(m1)
+summary(m2)
+
 ## Proportional odds model
 dclus2<-update(dclus2, mealcat=as.ordered(cut(meals,c(0,25,50,75,100))))
 a<-svyolr(mealcat~avg.ed+mobility+stype, design=dclus2)
@@ -85,6 +88,19 @@ sv1
 svrep
 SE(sv1)
 SE(svrep)
+summary(svrep)
+
+## Multinomial
+## Reference group (non-Hispanic White) average older and more educated
+## so coefficients are negative
+mult_eth<- svy_vglm(RIDRETH1~RIDAGEYR+DMDEDUC, family=multinomial(refLevel=3),design=nhdes)
+
+## separate logistic regressions are close but not identical
+two_eth<-svyglm(I(RIDRETH1==1)~RIDAGEYR+DMDEDUC, family=quasibinomial,
+    design=subset(nhdes, RIDRETH1 \%in\% c(1,3)))
+
+summary(mult_eth)
+summary(two_eth)
 
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the

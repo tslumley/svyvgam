@@ -34,7 +34,7 @@ svy_vglm.svyrep.design<-function(formula,family,design,...){
     dimnames(v)<-list(names(coef(fit0)),names(coef(fit0)))
 
 
-    rval<-list(coef=coef(fit0), fit=fit0, design=design, var=v)
+    rval<-list(coef=coef(fit0), fit=fit0, design=design, var=v, call=sys.call())
     class(rval)<-c("svyrep_vglm","svy_vglm")
     rval
 }
@@ -97,7 +97,7 @@ svy_vglm.survey.design<-function(formula, family, design,...){
     dimnames(v)<-list(names(coef(fit)),names(coef(fit)))
     
     rval<-list(coef=coef(fit), fit=fit, var=v, naive.var=sfit@cov.unscaled*sfit@dispersion,
-               design=design,algorithm=algorithm,call=sys.call(-1))
+               design=design,algorithm=algorithm,call=sys.call())
     class(rval)<-"svy_vglm"
     rval
    

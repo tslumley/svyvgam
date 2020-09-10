@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="Thomas Lumley" />
+
+<meta name="date" content="2020-09-10" />
+
+<title>VGAMs for survey data: theory</title>
+
+
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">VGAMs for survey data: theory</h1>
+<h4 class="author">Thomas Lumley</h4>
+<h4 class="date">2020-09-10</h4>
+
+
+
+<p>The <strong>VGAM</strong> package’s <code>vglm()</code> function, like the <strong>survey</strong> package’s <code>svymle()</code> function, allows for maximum likelihood fitting where linear predictors are added to one or more parameters of a distribution — but <code>vglm()</code> is a lot faster and has many distributions already built in. This is how we make <strong>svyVGAM</strong> handle complex sampling.</p>
+<p>I will write <span class="math inline">\(\beta\)</span> for the regression parameters, <span class="math inline">\(\theta\)</span> for the base parameters of the response distribution, and <span class="math inline">\(\eta\)</span> for the linear predictors. So, for example, in a classical linear model there would be two parameters <span class="math inline">\(\theta\)</span>: the mean (<span class="math inline">\(\theta_1\)</span>) and variance (<span class="math inline">\(\theta_2\)</span>). The mean would have a set of regression parameters and the variance would have a single parameter. Collectively, these would be <span class="math inline">\(\beta\)</span> (maybe <span class="math inline">\(\beta_{11}\dots\beta_{1p}\)</span> and <span class="math inline">\(\beta_{21}\)</span>), and the two combinations that are plugged in as <span class="math inline">\(\theta\)</span> would be called <span class="math inline">\(\eta_1\)</span> and <span class="math inline">\(\eta_2\)</span>. The big advantage of <strong>VGAM</strong> is that it does a lot of the work for the user: while the user can add new families, there are many pre-prepared ones, and there are built-in ways to constrain parameters to be equal or related in some other way.</p>
+<p>To provide survey versions of <code>vglm()</code>, we need to (a) get design-consistent point estimates out of <code>vglm()</code>, and (b) construct design-based standard errors for the fit. The first is easy: <code>vglm()</code> accepts frequency weights, which are <a href="https://notstatschat.rbind.io/2020/08/04/weights-in-statistics/">equivalent to sampling weights for point estimation</a> with independent observations.</p>
+<p>The second can be done in two ways: resampling (which is straightforward, if potentially slow), and linearisation. Linearisation requires computing the influence functions of the parameters <span class="math display">\[h_i(\beta) = -\widehat{\cal I}^{-1}_w U_i(\beta)\]</span> where <span class="math inline">\(\widehat{\cal I}_w\)</span> is the weighted estimate of the population Fisher information, <span class="math inline">\(U_i=\partial_\beta \ell_i(\beta)\)</span> is the loglikelihood contribution of the <span class="math inline">\(i\)</span>th observation, and <span class="math inline">\(w_i\)</span> is its weight. The influence functions have the property <span class="math display">\[\hat\beta-\beta_0 = \sum_i w_i h_i(\beta_0)+o_p(\|\hat\beta-\beta_0\|)\]</span> so that the variance of <span class="math inline">\(\hat\beta\)</span> is asymptotically the variance of the population total of the influence functions. The survey package provides a function <code>svyrecvar()</code> to estimate standard errors given the influence functions, or (a bit less efficiently) you can just call <code>svytotal()</code>.</p>
+<div id="resampling" class="section level3">
+<h3>Resampling</h3>
+<p>A design object of class <code>svyrep.design</code> contains sets of replicate weights analogous to jackknife or bootstrap replicates. We need to call <code>vglm()</code> with each set of weights. It should be helpful to specify the full-sample estimates as starting values.</p>
+<p>One complication is that sets of replicate weights will typically include some zeroes, which <code>vglm()</code> does not allow (eg, a bootstrap or jackknife resample will omit some observations). We set these to <span class="math inline">\(10^{-9}\)</span> times the maximum weight, which has the desired effect that the observations are present in the fit but with (effectively) zero weight.</p>
+</div>
+<div id="linearisation" class="section level3">
+<h3>Linearisation</h3>
+<p>The <code>cov.unscaled</code> slot of a <code>summary.vglm</code> object contains the inverse of the estimated population Fisher information, <span class="math inline">\(\widehat{\cal I}^{-1}_w\)</span>.</p>
+<p>The <code>vglm</code> object provides <span class="math inline">\(\partial_\eta\ell_i(\eta)\)</span> for the base parameters <span class="math inline">\(\theta\)</span>, and also the model matrices that specify <span class="math inline">\(\partial_\beta\eta\)</span>, so we can construct <span class="math inline">\(U_i\)</span>. We need to take care with the constraints, which can cause a coefficient <span class="math inline">\(\beta\)</span> to appear in more than one linear predictor.</p>
+<p>Suppose <span class="math inline">\(\beta_x\)</span> appears in both <span class="math inline">\(\eta_1\)</span> and <span class="math inline">\(\eta_2\)</span>, with <span class="math inline">\(x\)</span> values <span class="math inline">\(x_1\)</span> and <span class="math inline">\(x_2\)</span>. The chain rule tells us <span class="math display">\[\partial_{\beta_x}\ell_i =\partial_{\eta_1}\ell_i\partial_{\beta_x}\eta_1 + \partial_{\eta_2}\ell_i\partial_{\beta_x}\eta_2 = (\partial_{\eta_1}\ell_i) x_{1i}+ (\partial_{\eta_2}\ell_i) x_{2i} \]</span> We might have <span class="math inline">\(x_1\equiv x_2\,(=x)\)</span>, but that just means <span class="math display">\[\partial_{\beta_x}\ell_i = (\partial_{\eta_1}\ell_i) x_{i}+ (\partial_{\eta_2}\ell_i) x_{i} \]</span></p>
+<p>The constraint matrix <span class="math inline">\(C\)</span> consists of 1s and 0s. If there are <span class="math inline">\(p\)</span> parameters in <span class="math inline">\(M\)</span> equations the matrix is <span class="math inline">\(M\times p\)</span>, with <span class="math inline">\(C_{jk}=1\)</span> if parameter <span class="math inline">\(k\)</span> is in linear predictor <span class="math inline">\(j\)</span>. In the default, unconstrained setup, the constraint matrix consists of an <span class="math inline">\(M\times M\)</span> identity matrix for each parameter, pasted columnwise to give a <span class="math inline">\(M\times pM\)</span> matrix. In the proportional odds model, as another example, there are separate intercepts for each linear predictor but the other parameters all appear in every linear predictor. The first <span class="math inline">\(M\times M\)</span> block is the identity, and the rest of the matrix is a column of 1s for each predictor variable. Another way to say this is that <span class="math inline">\(C_{jk}=\partial_{ (\beta_kx_k)}\eta_j\)</span></p>
+<p>So, if we want <span class="math inline">\(\partial\beta\ell_i\)</span>, the chain rule says <span class="math display">\[\begin{eqnarray*}
+\frac{\partial \ell_i}{\partial \beta_j} &amp;=&amp; \sum_k\frac{\partial \ell_i}{\partial\eta_k} \frac{\partial \eta_k}{\partial \beta_j}\\
+&amp;=&amp; \sum_k\frac{\partial \ell_i}{\partial \eta_k} \frac{\partial \eta_k}{\partial (x\beta)_j}\frac{\partial (x\beta)_j}{\partial \beta_j}\\
+&amp;=&amp;\sum_k \frac{\partial \ell_i}{\partial \eta_k}  C_{kj}x_{ij}
+\end{eqnarray*}\]</span></p>
+<p>There is one further complication. The <code>model.matrix</code> method for <code>vglm</code> objects returns a model matrix of dimension <span class="math inline">\(Mn\times p\)</span> rather than <span class="math inline">\(n\times p\)</span>, so we need to sum over the rows for each observation, which can be identified from the row names, and then rescale. The right standardisation appears to come from defining <span class="math display">\[\tilde C_{kj}=\frac{C_{kj}}{\sum_k C_{kj}}\]</span> and then <span class="math display">\[\frac{\partial \ell_i}{\partial \beta_j}=\sum_k \frac{\partial \ell_i}{\partial \eta_k}  \tilde C_{kj}x_{ikj}.\]</span></p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

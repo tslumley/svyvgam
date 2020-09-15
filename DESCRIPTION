@@ -5,7 +5,7 @@ Author: Thomas Lumley
 Description: Provides inference based on the survey package for the wide range of parametric models in the VGAM package.
 Imports: stats, methods
 Depends: VGAM, survey, R (>= 3.5.0)
-Suggests: pscl, knitr
+Suggests: pscl, knitr, markdown
 VignetteBuilder: knitr
 Encoding: UTF-8
 License: GPL-3

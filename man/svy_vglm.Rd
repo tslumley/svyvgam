@@ -79,21 +79,19 @@ SE(b) #not identical, because svyolr() uses approximate Hessian
 
 ## Zero-inflated Poisson
 data(nhanes_sxq)
-nhdes = svydesign(id=~SDMVPSU,strat=~SDMVSTRA,weights=~WTINT2YR, nest=TRUE, data=nhanes_sxq)
-nhrepdes<-as.svrepdesign(nhdes,type="Fay",fay.rho=0.2)
+nhdes = svydesign(id=~SDMVPSU,strat=~SDMVSTRA,weights=~WTINT2YR,
+       nest=TRUE, data=nhanes_sxq)
 
-sv1<-svy_vglm(malepartners~RIDAGEYR+factor(RIDRETH1)+DMDEDUC, zipoisson(), design=nhdes, crit = "coef")
-svrep<-svy_vglm(malepartners~RIDAGEYR+factor(RIDRETH1)+DMDEDUC, zipoisson(), design=nhrepdes, crit = "coef")
+sv1<-svy_vglm(malepartners~RIDAGEYR+factor(RIDRETH1)+DMDEDUC,
+      zipoisson(), design=nhdes, crit = "coef")
 sv1
-svrep
-SE(sv1)
-SE(svrep)
-summary(svrep)
+summary(sv1)
 
 ## Multinomial
 ## Reference group (non-Hispanic White) average older and more educated
 ## so coefficients are negative
-mult_eth<- svy_vglm(RIDRETH1~RIDAGEYR+DMDEDUC, family=multinomial(refLevel=3),design=nhdes)
+mult_eth<- svy_vglm(RIDRETH1~RIDAGEYR+DMDEDUC,
+     family=multinomial(refLevel=3), design=nhdes)
 
 ## separate logistic regressions are close but not identical
 two_eth<-svyglm(I(RIDRETH1==1)~RIDAGEYR+DMDEDUC, family=quasibinomial,

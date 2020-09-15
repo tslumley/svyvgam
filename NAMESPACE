@@ -1,5 +1,7 @@
 export(svy_vglm)
 import(methods,VGAM)
+importFrom("survey", "svytotal","SE")
+importFrom("stats", "pnorm", "printCoefmat")
 
 S3method(print,svy_vglm)
 S3method(coef,svy_vglm)

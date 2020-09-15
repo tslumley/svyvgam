@@ -5,6 +5,7 @@ svy_vglm<-function(formula,family,design,...){
     UseMethod("svy_vglm",design)
 }
 
+utils::globalVariables(".survey.prob.weights") 
 
 svy_vglm.svyrep.design<-function(formula,family,design,...){
     
@@ -74,6 +75,8 @@ svy_vglm.survey.design<-function(formula, family, design,...){
         dl.deta <- weights(fit, deriv = TRUE, type = "working")$deriv
         ## Remove prior weights
         dl.deta <- dl.deta / c(weights(fit, type = "prior"))  # use pwts?
+        if (!is.matrix(dl.deta))
+            dl.deta <- cbind(dl.deta)
         
         X.vlm <- model.matrix(fit, type = "vlm")
         nn <- nobs(fit)

@@ -117,7 +117,7 @@ vcov.svy_vglm<-function(object,...) object$var
 
 coef.svy_vglm<-function(object,...) object$coef
 
-halfp<- function(t) pnorm(-abs(t))/2
+halfp<- function(t) pnorm(-abs(t))*2
 summary.svy_vglm<-function(object,...){
     object$coeftable<-cbind(Coef=coef(object), SE=SE(object), z=coef(object)/SE(object), p=halfp(coef(object)/SE(object)))
     class(object)<-"summary.svy_vglm"

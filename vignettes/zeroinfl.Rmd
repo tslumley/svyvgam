@@ -48,6 +48,7 @@ summary(unwt)
 vglm(malepartners~RIDAGEYR+factor(RIDRETH1)+DMDEDUC, zipoisson(), data = nhanes_sxq, crit = "coef")
 ```
 
+### Re-scaling the weights
 
 A traditional work-around for regression models is to rescale the weights to sum to the sample size and then pretend they are precision weights or frequency weights. 
 
@@ -78,6 +79,7 @@ repv = withReplicates(repdes, quote(
 repv
 ```
 
+### svymle
 
 Another way to fit the model using just the `survey` package is with `svymle`.  This takes the log-likelihood and its derivative as arguments, and adds linear predictors to some or all of those arguments.  That is, we specify the log-likelihood in terms of the Bernoulli parameter $p_0$ and the Poisson mean $\lambda$ -- actually $\mathrm{logit} p_0$ and $\eta=\log\lambda$, and also give the derivative with respect to these two parameters. The software does the necessary additional work to put linear predictors on the parameters and give us the zero-inflated model.  In fact, `svymle` is very similar in underlying approach to `vglm`; the difference is that `vglm` comes with a large collection of predefined models. 
 
@@ -85,7 +87,6 @@ In defining the loglikelihood I'm going to take advantage of the Poisson pmf bei
 $$\ell(y; \mu,p_0)=\log\left(p_0\{y==0\}+(1-p)\digamma(y,\mu)\right)$$
 only we want it in terms of $\mathrm{logit} p_0$ and $\eta=\log \lambda$
 ```{r}
-## svymle
 loglike = function(y,eta,logitp){
     mu = exp(eta)
     p = exp(logitp)/(1+exp(logitp))
@@ -118,7 +119,7 @@ deta = function(y,eta,logitp){
 score = function(y,eta,logitp) cbind(deta(y,eta,logitp), dlogitp(y,eta,logitp))
 ```
 
-Finally, we call `svymle` giving the linear predictors for both parameters.  One of the formulas needs to include the response variable $Y$. 
+And now we call `svymle` giving the linear predictors for both parameters.  One of the formulas needs to include the response variable $Y$. 
 
 ```{r}
 nlmfit = svymle(loglike=loglike, grad=score, design=des, 
@@ -129,13 +130,17 @@ nlmfit = svymle(loglike=loglike, grad=score, design=des,
 summary(nlmfit)
 ```
 
-asd
+### svyVGAM
+
+Finally, we use `svy_vglm`, with variances by linearisation
 
 ```{r}
-## svy_vgam
 library(svyVGAM)
-
 svy_vglm(malepartners~RIDAGEYR+factor(RIDRETH1)+DMDEDUC, zipoisson(), design=des, crit = "coef")
+```
 
+and by replicate weights
+
+```
 svy_vglm(malepartners~RIDAGEYR+factor(RIDRETH1)+DMDEDUC, zipoisson(), design=repdes, crit = "coef")
 ```

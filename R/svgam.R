@@ -31,7 +31,13 @@ svy_vglm.svyrep.design<-function(formula,family,design,...){
         thetas[i,]<-coef(fit_i)
     }
 
-    v<-vcov(design,thetas, theta)
+    if (design$mse) 
+        v<-survey::svrVar(thetas, scale = design$scale, rscales = design$rscales, 
+            mse = design$mse, coef=theta)
+    else v<-survey::svrVar(thetas, scale = design$scale, rscales = design$rscales, 
+        mse = design$mse)
+
+    ##v<-vcov(design,thetas, theta)
     dimnames(v)<-list(names(coef(fit0)),names(coef(fit0)))
 
 

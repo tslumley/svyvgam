@@ -12,7 +12,7 @@
 
 <meta name="author" content="Thomas Lumley" />
 
-<meta name="date" content="2020-08-04" />
+<meta name="date" content="2020-10-16" />
 
 <title>Zero-inflated Poisson model for complex survey data</title>
 
@@ -319,7 +319,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <h1 class="title toc-ignore">Zero-inflated Poisson model for complex survey data</h1>
 <h4 class="author">Thomas Lumley</h4>
-<h4 class="date">2020-08-04</h4>
+<h4 class="date">2020-10-16</h4>
 
 
 
@@ -365,7 +365,7 @@ nhanes_sxq&lt;-merged[, c(&quot;SDMVPSU&quot;,&quot;SDMVSTRA&quot;,&quot;WTINT2Y
 ## hurdle and zeroinfl functions by Achim Zeileis</code></pre>
 <div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1"></a><span class="kw">data</span>(nhanes_sxq)</span>
 <span id="cb15-2"><a href="#cb15-2"></a>des =<span class="st"> </span><span class="kw">svydesign</span>(<span class="dt">id=</span><span class="op">~</span>SDMVPSU,<span class="dt">strat=</span><span class="op">~</span>SDMVSTRA,<span class="dt">weights=</span><span class="op">~</span>WTINT2YR, <span class="dt">nest=</span><span class="ot">TRUE</span>, <span class="dt">data=</span>nhanes_sxq)</span></code></pre></div>
-<p>First, we’ll fit the model just ignoring the survey design, using both <code>pscl::zeroinfl</code> and <code>VGAM::vglm</code>. These models use the same variables in a logistic regression for <span class="math inline">\(Z\)</span> and a Poisson regression for <span class="math inline">\(P\)</span>. In <code>VGAM</code> you make the models different by constraining coefficients to be zero in one of the models; in <code>pscl</code> you specify different models before and after the <code>|</code>.</p>
+<p>First, we’ll fit the model just ignoring the survey design, using both <code>pscl::zeroinfl</code> and <code>VGAM::vglm</code>. These models use the same variables in a logistic regression for <span class="math inline">\(Z\)</span> and a Poisson regression for <span class="math inline">\(P\)</span>. In <code>VGAM</code> you would make the models different by constraining coefficients to be zero in one of the models; in <code>pscl</code> you would specify different models before and after the <code>|</code>.</p>
 <div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1"></a>unwt =<span class="st"> </span><span class="kw">zeroinfl</span>(malepartners<span class="op">~</span>RIDAGEYR<span class="op">+</span><span class="kw">factor</span>(RIDRETH1)<span class="op">+</span>DMDEDUC<span class="op">|</span>RIDAGEYR<span class="op">+</span><span class="kw">factor</span>(RIDRETH1)<span class="op">+</span>DMDEDUC, <span class="dt">data=</span>nhanes_sxq)</span>
 <span id="cb16-2"><a href="#cb16-2"></a><span class="kw">summary</span>(unwt)</span></code></pre></div>
 <pre><code>## 
@@ -420,6 +420,9 @@ nhanes_sxq&lt;-merged[, c(&quot;SDMVPSU&quot;,&quot;SDMVSTRA&quot;,&quot;WTINT2Y
 ## 
 ## Degrees of Freedom: 5050 Total; 5036 Residual
 ## Log-likelihood: -9517.556</code></pre>
+<div id="re-scaling-the-weights" class="section level3">
+<h3>Re-scaling the weights</h3>
+<p>A traditional work-around for regression models is to rescale the weights to sum to the sample size and then pretend they are precision weights or frequency weights.</p>
 <div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1"></a>nhanes_sxq<span class="op">$</span>scaledwt&lt;-nhanes_sxq<span class="op">$</span>WTINT2YR<span class="op">/</span><span class="kw">mean</span>(nhanes_sxq<span class="op">$</span>WTINT2YR)</span>
 <span id="cb20-2"><a href="#cb20-2"></a></span>
 <span id="cb20-3"><a href="#cb20-3"></a>wt=<span class="st"> </span><span class="kw">zeroinfl</span>(malepartners<span class="op">~</span>RIDAGEYR<span class="op">+</span><span class="kw">factor</span>(RIDRETH1)<span class="op">+</span>DMDEDUC<span class="op">|</span>RIDAGEYR<span class="op">+</span><span class="kw">factor</span>(RIDRETH1)<span class="op">+</span>DMDEDUC, <span class="dt">data=</span>nhanes_sxq, <span class="dt">weights=</span>scaledwt)</span></code></pre></div>
@@ -537,14 +540,16 @@ nhanes_sxq&lt;-merged[, c(&quot;SDMVPSU&quot;,&quot;SDMVSTRA&quot;,&quot;WTINT2Y
 ## factor(RIDRETH1)5:2  0.4774124 0.2501
 ## DMDEDUC:1           -0.2023967 0.0586
 ## DMDEDUC:2           -0.0237389 0.0797</code></pre>
+</div>
+<div id="svymle" class="section level3">
+<h3>svymle</h3>
 <p>Another way to fit the model using just the <code>survey</code> package is with <code>svymle</code>. This takes the log-likelihood and its derivative as arguments, and adds linear predictors to some or all of those arguments. That is, we specify the log-likelihood in terms of the Bernoulli parameter <span class="math inline">\(p_0\)</span> and the Poisson mean <span class="math inline">\(\lambda\)</span> – actually <span class="math inline">\(\mathrm{logit} p_0\)</span> and <span class="math inline">\(\eta=\log\lambda\)</span>, and also give the derivative with respect to these two parameters. The software does the necessary additional work to put linear predictors on the parameters and give us the zero-inflated model. In fact, <code>svymle</code> is very similar in underlying approach to <code>vglm</code>; the difference is that <code>vglm</code> comes with a large collection of predefined models.</p>
 <p>In defining the loglikelihood I’m going to take advantage of the Poisson pmf being available in R. Let’s call it <span class="math inline">\(\digamma(y,\lambda)\)</span>. The loglikelihood is <span class="math display">\[\ell(y; \mu,p_0)=\log\left(p_0\{y==0\}+(1-p)\digamma(y,\mu)\right)\]</span> only we want it in terms of <span class="math inline">\(\mathrm{logit} p_0\)</span> and <span class="math inline">\(\eta=\log \lambda\)</span></p>
-<div class="sourceCode" id="cb30"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1"></a><span class="co">## svymle</span></span>
-<span id="cb30-2"><a href="#cb30-2"></a>loglike =<span class="st"> </span><span class="cf">function</span>(y,eta,logitp){</span>
-<span id="cb30-3"><a href="#cb30-3"></a>    mu =<span class="st"> </span><span class="kw">exp</span>(eta)</span>
-<span id="cb30-4"><a href="#cb30-4"></a>    p =<span class="st"> </span><span class="kw">exp</span>(logitp)<span class="op">/</span>(<span class="dv">1</span><span class="op">+</span><span class="kw">exp</span>(logitp))</span>
-<span id="cb30-5"><a href="#cb30-5"></a>    <span class="kw">log</span>(p<span class="op">*</span>(y<span class="op">==</span><span class="dv">0</span>)<span class="op">+</span>(<span class="dv">1</span><span class="op">-</span>p)<span class="op">*</span><span class="kw">dpois</span>(y,mu))</span>
-<span id="cb30-6"><a href="#cb30-6"></a>}</span></code></pre></div>
+<div class="sourceCode" id="cb30"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1"></a>loglike =<span class="st"> </span><span class="cf">function</span>(y,eta,logitp){</span>
+<span id="cb30-2"><a href="#cb30-2"></a>    mu =<span class="st"> </span><span class="kw">exp</span>(eta)</span>
+<span id="cb30-3"><a href="#cb30-3"></a>    p =<span class="st"> </span><span class="kw">exp</span>(logitp)<span class="op">/</span>(<span class="dv">1</span><span class="op">+</span><span class="kw">exp</span>(logitp))</span>
+<span id="cb30-4"><a href="#cb30-4"></a>    <span class="kw">log</span>(p<span class="op">*</span>(y<span class="op">==</span><span class="dv">0</span>)<span class="op">+</span>(<span class="dv">1</span><span class="op">-</span>p)<span class="op">*</span><span class="kw">dpois</span>(y,mu))</span>
+<span id="cb30-5"><a href="#cb30-5"></a>}</span></code></pre></div>
 <p>We also need the derivatives with respect to <span class="math inline">\(\mathrm{logit} p_0\)</span> and <span class="math inline">\(\eta=\log \lambda\)</span></p>
 <div class="sourceCode" id="cb31"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1"></a>dlogitp =<span class="st"> </span><span class="cf">function</span>(y,eta,logitp){</span>
 <span id="cb31-2"><a href="#cb31-2"></a>    mu =<span class="st"> </span><span class="kw">exp</span>(eta)</span>
@@ -566,7 +571,7 @@ nhanes_sxq&lt;-merged[, c(&quot;SDMVPSU&quot;,&quot;SDMVSTRA&quot;,&quot;WTINT2Y
 <span id="cb31-18"><a href="#cb31-18"></a>    }   </span>
 <span id="cb31-19"><a href="#cb31-19"></a></span>
 <span id="cb31-20"><a href="#cb31-20"></a>score =<span class="st"> </span><span class="cf">function</span>(y,eta,logitp) <span class="kw">cbind</span>(<span class="kw">deta</span>(y,eta,logitp), <span class="kw">dlogitp</span>(y,eta,logitp))</span></code></pre></div>
-<p>Finally, we call <code>svymle</code> giving the linear predictors for both parameters. One of the formulas needs to include the response variable <span class="math inline">\(Y\)</span>.</p>
+<p>And now we call <code>svymle</code> giving the linear predictors for both parameters. One of the formulas needs to include the response variable <span class="math inline">\(Y\)</span>.</p>
 <div class="sourceCode" id="cb32"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1"></a>nlmfit =<span class="st"> </span><span class="kw">svymle</span>(<span class="dt">loglike=</span>loglike, <span class="dt">grad=</span>score, <span class="dt">design=</span>des, </span>
 <span id="cb32-2"><a href="#cb32-2"></a>        <span class="dt">formulas=</span><span class="kw">list</span>(<span class="dt">eta=</span>malepartners<span class="op">~</span>RIDAGEYR <span class="op">+</span><span class="st"> </span><span class="kw">factor</span>(RIDRETH1) <span class="op">+</span><span class="st"> </span>DMDEDUC, </span>
 <span id="cb32-3"><a href="#cb32-3"></a>        <span class="dt">logitp=</span><span class="op">~</span>RIDAGEYR <span class="op">+</span><span class="st"> </span><span class="kw">factor</span>(RIDRETH1) <span class="op">+</span><span class="st"> </span>DMDEDUC),</span>
@@ -597,11 +602,12 @@ nhanes_sxq&lt;-merged[, c(&quot;SDMVPSU&quot;,&quot;SDMVSTRA&quot;,&quot;WTINT2Y
 ## With (30) clusters.
 ## svydesign(id = ~SDMVPSU, strat = ~SDMVSTRA, weights = ~WTINT2YR, 
 ##     nest = TRUE, data = nhanes_sxq)</code></pre>
-<p>asd</p>
-<div class="sourceCode" id="cb34"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1"></a><span class="co">## svy_vgam</span></span>
-<span id="cb34-2"><a href="#cb34-2"></a><span class="kw">library</span>(svyVGAM)</span>
-<span id="cb34-3"><a href="#cb34-3"></a></span>
-<span id="cb34-4"><a href="#cb34-4"></a><span class="kw">svy_vglm</span>(malepartners<span class="op">~</span>RIDAGEYR<span class="op">+</span><span class="kw">factor</span>(RIDRETH1)<span class="op">+</span>DMDEDUC, <span class="kw">zipoisson</span>(), <span class="dt">design=</span>des, <span class="dt">crit =</span> <span class="st">&quot;coef&quot;</span>)</span></code></pre></div>
+</div>
+<div id="svyvgam" class="section level3">
+<h3>svyVGAM</h3>
+<p>Finally, we use <code>svy_vglm</code>, with variances by linearisation</p>
+<div class="sourceCode" id="cb34"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1"></a><span class="kw">library</span>(svyVGAM)</span>
+<span id="cb34-2"><a href="#cb34-2"></a><span class="kw">svy_vglm</span>(malepartners<span class="op">~</span>RIDAGEYR<span class="op">+</span><span class="kw">factor</span>(RIDRETH1)<span class="op">+</span>DMDEDUC, <span class="kw">zipoisson</span>(), <span class="dt">design=</span>des, <span class="dt">crit =</span> <span class="st">&quot;coef&quot;</span>)</span></code></pre></div>
 <pre><code>## Stratified 1 - level Cluster Sampling design (with replacement)
 ## With (30) clusters.
 ## svydesign(id = ~SDMVPSU, strat = ~SDMVSTRA, weights = ~WTINT2YR, 
@@ -624,27 +630,9 @@ nhanes_sxq&lt;-merged[, c(&quot;SDMVPSU&quot;,&quot;SDMVSTRA&quot;,&quot;WTINT2Y
 ## 
 ## Degrees of Freedom: 5050 Total; 5036 Residual
 ## Log-likelihood: -493703966</code></pre>
-<div class="sourceCode" id="cb36"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1"></a><span class="kw">svy_vglm</span>(malepartners<span class="op">~</span>RIDAGEYR<span class="op">+</span><span class="kw">factor</span>(RIDRETH1)<span class="op">+</span>DMDEDUC, <span class="kw">zipoisson</span>(), <span class="dt">design=</span>repdes, <span class="dt">crit =</span> <span class="st">&quot;coef&quot;</span>)</span></code></pre></div>
-<pre><code>## Call: as.svrepdesign(des, type = &quot;Fay&quot;, fay.rho = 0.2)
-## Fay&#39;s variance method (rho= 0.2 ) with 16 replicates.
-## 
-## Call:
-## vglm(formula = formula, family = family, data = surveydata, weights = .survey.prob.weights, 
-##     crit = &quot;coef&quot;)
-## 
-## 
-## Coefficients:
-##       (Intercept):1       (Intercept):2          RIDAGEYR:1          RIDAGEYR:2 
-##         0.660504243         1.834068104        -0.007833317        -0.007388071 
-## factor(RIDRETH1)2:1 factor(RIDRETH1)2:2 factor(RIDRETH1)3:1 factor(RIDRETH1)3:2 
-##        -0.116789371        -0.107331190         0.101971159         0.655136725 
-## factor(RIDRETH1)4:1 factor(RIDRETH1)4:2 factor(RIDRETH1)5:1 factor(RIDRETH1)5:2 
-##        -0.160804047         0.635814748         0.106778915         0.477412443 
-##           DMDEDUC:1           DMDEDUC:2 
-##        -0.202396659        -0.023738881 
-## 
-## Degrees of Freedom: 5050 Total; 5036 Residual
-## Log-likelihood: -9765.52</code></pre>
+<p>and by replicate weights</p>
+<pre><code>svy_vglm(malepartners~RIDAGEYR+factor(RIDRETH1)+DMDEDUC, zipoisson(), design=repdes, crit = &quot;coef&quot;)</code></pre>
+</div>
 
 
 

@@ -45,6 +45,10 @@ svy_vglm.svyrep.design<-function(formula,family,design,...){
     class(rval)<-c("svyrep_vglm","svy_vglm")
     rval
 }
+is.calibrated<-function (design) 
+{
+    !is.null(design$postStrata)
+}
 
 
 svy_vglm.survey.design<-function(formula, family, design,...){
@@ -61,12 +65,12 @@ svy_vglm.survey.design<-function(formula, family, design,...){
     
     fit<-vglm(formula, family, data=surveydata, weights=.survey.prob.weights,...)
     sfit<-summary(fit)
-    
+
     naa<-fit@na.action
     if(!is.null(naa) && (length(naa)>0)){
-        design<-design[-naa[[1]],]
         pwts<-pwts[-naa[[1]]]
     }
+
     if (algorithm == 1) {  # Original
         scores<-weights(fit, deriv = TRUE, type = "working")$deriv
         inv_inf<-sfit@cov.unscaled
@@ -100,6 +104,16 @@ svy_vglm.survey.design<-function(formula, family, design,...){
         ## Any prior weights are in vcov(fit)
         inv_inf <- vcov(fit)  # Same as summary(fit)@cov.unscaled for VGLMs
         inffuns <- dl.dbeta.vlm %*% inv_inf
+    }
+
+    naa<-fit@na.action
+    if(!is.null(naa) && (length(naa)>0)){
+        design<-design[-naa[[1]],]
+        if (is.calibrated(design)){ ## subsetting doesn't remove records
+            inffuns1<-matrix(0,ncol=ncol(inffuns), nrow=nrow(inffuns)+length(naa[[1]]))
+            inffuns1[-naa[[1]],]<-inffuns
+            inffuns<-inffuns1
+        }
     }
     
     v<- vcov(svytotal(inffuns, design))

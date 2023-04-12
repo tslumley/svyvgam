@@ -78,7 +78,9 @@ svy_vglm.survey.design<-function(formula, family, design,...){
         mmat <- model.matrix(fit)
         case_index<-as.numeric(gsub("^(.+):.*", "\\1", rownames(mmat)))    
         mmatsum<- t(t(rowsum(mmat, case_index, reorder=FALSE ))/colSums(cons))
-        inffuns<-(((scores/pwts)%*%cons)*mmatsum)%*% inv_inf
+        wscores<-scores/pwts
+        wscores[pwts==0,]<-0
+        inffuns<-(((wscores)%*%cons)*mmatsum)%*% inv_inf
     } else { 
         ## based on advice from Thomas Yee
         ## however, fails for multinomial() family with only two categories

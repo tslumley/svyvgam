@@ -21,32 +21,33 @@ svy_vglm(formula, family, design, ...)
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{formula}{
-Model formula, as for \code{\link{vglm}}
+Model formula, as for \code{\link[VGAM]{vglm}}
   }
   \item{family}{
-Model family, as for \code{\link{vglm}}
+Model family, as for \code{\link[VGAM]{vglm}}
   }
   \item{design}{
 Survey design object
   }
   \item{\dots}{
-Other arguments to pass to  \code{\link{vglm}}
+Other arguments to pass to  \code{\link[VGAM]{vglm}}
   }
 }
 
 \value{
-An S3 object of class \code{svy_glm} with \code{print}, \code{coef} and \code{vcov}
-methods, containing the design in the \code{design} component and a
-fitted \code{vglm} object in the \code{fit} component.
+An S3 object of class \code{svy_glm} with \code{print}, \code{coef},
+\code{vcov}, and \code{predict} methods, containing the design in
+the \code{design} component and a fitted \code{vglm} object in the
+\code{fit} component.
 }
 
 \seealso{
 \code{\link{nhanes_sxq}}
 
-\code{\link{vglm}}
+\code{\link[VGAM]{vglm}}
 
-\code{\link{svydesign}}
-\code{\link{svrepdesign}}
+\code{\link[survey]{svydesign}}
+\code{\link[survey]{svrepdesign}}
 
 
 }

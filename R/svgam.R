@@ -151,3 +151,11 @@ print.summary.svy_vglm<-function(x,...){
     print(x$design)
     printCoefmat(x$coeftable, has.Pvalue=TRUE, P.values=TRUE,signif.stars=FALSE)
     }
+
+predict.svy_vglm<-function(object, newdata=NULL, type = c("link", "response", 
+                                                     "terms"), se.fit = FALSE,...){
+
+    if (se.fit) stop("se.fit not yet available")
+    predict(object$fit, newdata=newdata, type=type, se.fit=FALSE,...)
+
+}
